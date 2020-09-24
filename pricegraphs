@@ -1,0 +1,64 @@
+import pandas as pd
+import os
+from collections import defaultdict
+import numpy as np
+import matplotlib.pyplot as plt
+from datetime import datetime
+
+csvList = os.listdir("/home/amenemenlis/dappervolk_trade_scraper/trade_scraper_data")
+
+counter = 0
+dataTableList = []
+for x in csvList:
+    data = pd.read_csv("home/amenemenlis/dappervolk_trade_scraper/trade_scraper_data/" + x)
+    dataTableList.append(data)
+    counter += 1
+    
+dvlkTable = pd.concat(dataTableList, ignore_index=True)
+dvlkCtable = dvlkTable.drop_duplicates(subset=['href'], keep='first')
+
+counter = 0
+dvlkItemPrice = defaultdict(list)
+while counter < len(dvlkCtable):
+    dvlkItemPrice[dvlkCtable['itemName'].iloc[counter]].append((dvlkCtable['FlatSalePrice'].iloc[counter],dvlkCtable['date'].iloc[counter]))
+    counter += 1
+dvlkdict = {}
+for x in dvlkItemPrice:
+    df = pd.DataFrame(dvlkItemPrice[x])
+    df.columns = ["FlatSalePrice","date"]
+    dvlkdict[x] = df
+
+dvlkAllDatadict = {}
+dvlkAvgdict = {}
+datelist = set()
+
+for x in dvlkdict:
+    counter = 0
+    tempdict = defaultdict(list)
+    avgdict = {}
+    while counter < len(dvlkdict[x]):
+        datelist.add(str(dvlkdict[x]['date'].loc[counter])[:16])
+        tempdict[dvlkdict[x]['date'].loc[counter][:16]].append(dvlkdict[x]['FlatSalePrice'].loc[counter])
+        counter += 1
+    for y in tempdict:
+        avgdict[y] = int(np.average(tempdict[y]))
+    dvlkAllDatadict[x] = tempdict
+    dvlkAvgdict[x] = avgdict
+    
+dvlkAllDatatbl = pd.DataFrame(dvlkAllDatadict)
+dvlkAvgtbl = pd.DataFrame(dvlkAvgdict)
+
+timelist=[]
+for x in datelist:
+    if len(str(x)) == 16:
+        timelist.append(datetime.strptime(x,"%Y-%m-%d %H:%M"))
+    else:
+        timelist.append(datetime.strptime(x,"%Y-%m-%d"))
+        
+name = 'bearnards sun hat'
+
+plt.plot_date(timelist, dvlkAvgtbl[name], '-o', xdate = True)
+plt.title(name)
+plt.xlabel('DateTime')
+plt.ylabel('Price')
+plt.show()
